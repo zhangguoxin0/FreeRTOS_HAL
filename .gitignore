@@ -1,0 +1,5 @@
+MDK-ARM/*
+!MDK-ARM/FreeRTOS_HAL.uvoptx
+!MDK-ARM/FreeRTOS_HAL.uvprojx
+!MDK-ARM/startup_stm32f103xe.lst
+!MDK-ARM/startup_stm32f103xe.s
