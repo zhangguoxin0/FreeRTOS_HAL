@@ -54,6 +54,19 @@
 
 // #define configSUPPORT_STATIC_ALLOCATION 1  // 支持静态申请内存 0：关闭 1：开启
 
+/****************************************************************************************
+ *                                    中断相关配置
+ ****************************************************************************************/
+#ifdef __NVIC_PRIO_BITS
+#define configPRIO_BITS __NVIC_PRIO_BITS
+#else
+#define configPRIO_BITS 4
+#endif
+#define configLIBRARY_LOWEST_INTERRUPT_PRIORITY 15                                                                   // 中断最低优先级
+#define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 5                                                               // 系统可管理的最高中断优先级
+#define configKERNEL_INTERRUPT_PRIORITY (configLIBRARY_LOWEST_INTERRUPT_PRIORITY << (8 - configPRIO_BITS))           // 对需要配置的SysTick与PendSV进行偏移
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY (configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY << (8 - configPRIO_BITS)) // 屏蔽优先级大于系统可管理的最高优先级中断
+
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
 
@@ -69,10 +82,10 @@ to exclude the API function. */
 
 /* This is the raw value as per the Cortex-M3 NVIC.  Values can be 255
 (lowest) to 0 (1?) (highest). */
-#define configKERNEL_INTERRUPT_PRIORITY 255
+// #define configKERNEL_INTERRUPT_PRIORITY 255
 /* !!!! configMAX_SYSCALL_INTERRUPT_PRIORITY must not be set to zero !!!!
 See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
-#define configMAX_SYSCALL_INTERRUPT_PRIORITY 191 /* equivalent to 0xb0, or priority 11. */
+// #define configMAX_SYSCALL_INTERRUPT_PRIORITY 191 /* equivalent to 0xb0, or priority 11. */
 
 /* This is the value being used as per the ST library which permits 16
 priority values, 0 to 15.  This must correspond to the
