@@ -3,7 +3,10 @@
 
 #include "gpio.h"
 
+#define KEY1_PRESS 1
+#define KEY2_PRESS 2
+
 void KEY_Init(void);
-uint8_t KEY1_SACN(void);
+uint8_t KEY_SACN(void);
 
 #endif /* __KEY_H__ */

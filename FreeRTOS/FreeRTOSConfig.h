@@ -52,7 +52,7 @@
 #define configUSE_16_BIT_TICKS 0
 #define configIDLE_SHOULD_YIELD 1
 
-#define configSUPPORT_STATIC_ALLOCATION 1  // 支持静态申请内存 0：关闭 1：开启
+// #define configSUPPORT_STATIC_ALLOCATION 1  // 支持静态申请内存 0：关闭 1：开启
 
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
@@ -61,9 +61,11 @@ to exclude the API function. */
 #define INCLUDE_uxTaskPriorityGet 1
 #define INCLUDE_vTaskDelete 1
 #define INCLUDE_vTaskCleanUpResources 0
-#define INCLUDE_vTaskSuspend 1
+#define INCLUDE_vTaskSuspend 1 // 任务挂起
 #define INCLUDE_vTaskDelayUntil 1
 #define INCLUDE_vTaskDelay 1
+
+#define INCLUDE_xTaskResumeFromISR 1 // 中断中恢复任务挂起
 
 /* This is the raw value as per the Cortex-M3 NVIC.  Values can be 255
 (lowest) to 0 (1?) (highest). */

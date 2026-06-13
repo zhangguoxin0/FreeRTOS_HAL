@@ -1,20 +1,76 @@
 #include "KEY.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "usart.h"
+
+static uint8_t key1_last_status = 1;
+static uint8_t key1_now_status = 1;
+static uint8_t key2_last_status = 1;
+static uint8_t key2_now_status = 1;
 
 void KEY_Init()
 {
 }
 
 /**
- * @brief æŒ‰é”®æ‰«æ
- * 
- * @return uint8_t 1ï¼šæŒ‰é”®è¢«æŒ‰ä¸‹ 0ï¼šæŒ‰é”®æœªè¢«æŒ‰ä¸‹
+ * @brief °´¼üÉ¨Ãè
+ *
+ * @return uint8_t 0£º°´¼üÎ´±»°´ÏÂ x:°´¼üx±»°´ÏÂ
  */
-uint8_t KEY1_SACN(void)
+uint8_t KEY_SACN(void)
 {
     if (HAL_GPIO_ReadPin(KEY1_GPIO_Port, KEY1_Pin) == GPIO_PIN_RESET)
     {
-        return 1;
+        key1_last_status = key1_now_status;
+        key1_now_status = 0;
+    }
+    else
+    {
+        key1_last_status = key1_now_status;
+        key1_now_status = 1;
+    }
+    if (HAL_GPIO_ReadPin(KEY2_GPIO_Port, KEY2_Pin) == GPIO_PIN_RESET)
+    {
+        key2_last_status = key2_now_status;
+        key2_now_status = 0;
+    }
+    else
+    {
+        key2_last_status = key2_now_status;
+        key2_now_status = 1;
     }
 
+    if(key1_last_status == 1 && key1_now_status == 0)
+    {
+        return KEY1_PRESS;
+    }
+    else if (key2_last_status == 1 && key2_now_status == 0)
+    {
+        return KEY2_PRESS;
+    }
     return 0;
+}
+
+extern TaskHandle_t task1_handler;
+/**
+ * @brief Íâ²¿ÖĞ¶ÏÖĞ¶Ï·şÎñ³ÌĞò
+ *
+ * @param GPIO_Pin
+ */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    BaseType_t xYieldRequired;
+
+    if (GPIO_Pin == KEY3_Pin)
+    {
+        // °´¼ü3±»°´ÏÂ
+        xYieldRequired = xTaskResumeFromISR(task1_handler);
+        // printf("ÔÚÖĞ¶ÏÖĞ»Ö¸´task1\n");
+    }
+
+    if (xYieldRequired == pdTRUE)
+    {
+        // task1´Ó¹ÒÆğ×´Ì¬»Ö¸´ĞèÒªÖ´ĞĞÈÎÎñÇĞ»»
+        portYIELD_FROM_ISR(xYieldRequired);
+    }
 }
