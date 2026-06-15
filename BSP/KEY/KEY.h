@@ -5,6 +5,7 @@
 
 #define KEY1_PRESS 1
 #define KEY2_PRESS 2
+#define KEY3_PRESS 3
 
 void KEY_Init(void);
 uint8_t KEY_SACN(void);

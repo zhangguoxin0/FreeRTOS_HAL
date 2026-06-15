@@ -95,9 +95,6 @@ int main(void)
   MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_TIM_Base_Start_IT(&htim6);
-  HAL_TIM_Base_Start_IT(&htim7);
-
   App_FreeRTOS_Init();
 
   /* USER CODE END 2 */
@@ -173,14 +170,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  if (htim->Instance == TIM6)
-  {
-    printf("TIM6优先级为4的正在运行\n");
-  }
-  else if (htim->Instance == TIM7)
-  {
-    printf("TIM7优先级为6的正在运行\n");
-  }
+
   /* USER CODE END Callback 1 */
 }
 
