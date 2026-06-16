@@ -1,9 +1,9 @@
 #include "APP_FreeRTOS.h"
 #include "FreeRTOS.h"
 #include "task.h"
-#include "queue.h"
 #include "usart.h"
 #include "KEY.h"
+#include "semphr.h"
 
 /***********************************************************************************************************
  *                                                任务配置
@@ -21,42 +21,31 @@ TaskHandle_t task1_handler;
 // TASK2任务配置
 void task2(void *pvParameters);
 #define TASK2_STACK_SIZE 128
-#define TASK2_PRIO 2
+#define TASK2_PRIO 3
 TaskHandle_t task2_handler;
-// TASK3任务配置
-void task3(void *pvParameters);
-#define TASK3_STACK_SIZE 128
-#define TASK3_PRIO 2
-TaskHandle_t task3_handler;
 
 /***********************************************************************************************************
- *                                               消息队列相关
+ *                                              二值信号量相关
  ***********************************************************************************************************/
-QueueHandle_t key_queue;                      // 小数据消息队列
-QueueHandle_t big_date_queue;                 // 大数据消息队列
-char buff[100] = "这是一段文本,123,abc,!!!!"; // 测试内容
+QueueHandle_t semphore_handle; // 二值信号量句柄
 
 /***********************************************************************************************************
  *                                              FreeRTOS初始化
  ***********************************************************************************************************/
 void App_FreeRTOS_Init(void)
 {
-    // 创建消息队列
-    key_queue = xQueueCreate(2, sizeof(uint8_t));
-    if (key_queue == NULL)
+    // 创建二值信号量
+    semphore_handle = xSemaphoreCreateBinary();
+    if (semphore_handle == NULL)
     {
-        printf("小数据消息队列创建失败!\n");
+        printf("二值信号量创建失败\n");
         while (1)
         {
         }
     }
-    big_date_queue = xQueueCreate(1, sizeof(char *));
-    if (big_date_queue == NULL)
+    else
     {
-        printf("大数据消息队列创建失败!\n");
-        while (1)
-        {
-        }
+        printf("二值信号量创建成功\n");
     }
 
     // 创建任务
@@ -74,100 +63,64 @@ void start_task(void *pvParameters)
     taskENTER_CRITICAL(); // 进入临界区
     xTaskCreate(task1, "task1", TASK1_STACK_SIZE, NULL, TASK1_PRIO, &task1_handler);
     xTaskCreate(task2, "task2", TASK2_STACK_SIZE, NULL, TASK2_PRIO, &task2_handler);
-    xTaskCreate(task3, "task3", TASK3_STACK_SIZE, NULL, TASK3_PRIO, &task3_handler);
     vTaskDelete(start_task_handler);
     taskEXIT_CRITICAL(); // 退出临界区
 }
 
 /**
- * @brief 数据入队
+ * @brief 当按键1按下时释放二值信号量
  *
  * @param pvParameters
  */
 void task1(void *pvParameters)
 {
     uint8_t key_value; // 键值
-    char *buf;
     BaseType_t res;
-
-    buf = buff; // buf的值为buff的首地址
 
     while (1)
     {
         key_value = KEY_SACN();
-        if (key_value == KEY1_PRESS || key_value == KEY2_PRESS)
+        if (key_value == KEY1_PRESS)
         {
-            // 当按键1或按键2按下，将键值发送到小数据队列中，若消息队列没有空闲位置则一直等待
-            res = xQueueSend(key_queue, &key_value, portMAX_DELAY);
-            if (res != pdTRUE)
+            if (semphore_handle != NULL)
             {
-                printf("小数据队列写入键值失败!\n");
-                while (1)
+                res = xSemaphoreGive(semphore_handle);
+                if (res == pdPASS)
                 {
+                    printf("二值信号量释放成功\n");
+                }
+                else
+                {
+                    printf("二值信号量释放失败\n");
                 }
             }
         }
-        else if (key_value == KEY3_PRESS)
-        {
-            // 当按键3按下，将 测试内容 发送到大数据队列中，若消息队列没有空闲则一直等待
-            res = xQueueSend(big_date_queue, &buf, portMAX_DELAY);
-            if (res != pdTRUE)
-            {
-                printf("大数据队列写入测试内容失败!\n");
-                while (1)
-                {
-                }
-            }
-        }
-
         vTaskDelay(10);
     }
 }
 
 /**
- * @brief 小数据出队
+ * @brief 获取二值信号量，当获取成功时打印信息
  *
  * @param pvParameters
  */
 void task2(void *pvParameters)
 {
-    uint8_t key_value;
+    uint8_t i;
     BaseType_t res;
 
     while (1)
     {
-        res = xQueueReceive(key_queue, &key_value, portMAX_DELAY);
-        if (res != pdTRUE)
+        // 获取二值信号量
+        res = xSemaphoreTake(semphore_handle, 1000);
+        // 根据获取情况打印对应信息
+        if (res == pdTRUE)
         {
-            printf("读取小数据队列失败!\n");
+            printf("二值信号量获取成功%d次\n", ++i);
         }
         else
         {
-            printf("读取小数据队列成功,键值:%d\n", key_value);
-        }
-    }
-}
-
-/**
- * @brief 大数据出队
- *
- * @param pvParameters
- */
-void task3(void *pvParameters)
-{
-    char *buf;
-    BaseType_t res;
-
-    while (1)
-    {
-        res = xQueueReceive(big_date_queue, &buf, portMAX_DELAY);
-        if (res != pdTRUE)
-        {
-            printf("读取大数据队列失败!\n");
-        }
-        else
-        {
-            printf("读取大数据队列成功,数据内容:%s\n", buf);
+            printf("二值信号量获取失败\n");
         }
     }
 }
