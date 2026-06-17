@@ -4,6 +4,7 @@
 #include "usart.h"
 #include "KEY.h"
 #include "semphr.h"
+#include "queue.h"
 
 /***********************************************************************************************************
  *                                                任务配置
@@ -13,46 +14,54 @@ void start_task(void *pvParameters);
 #define START_TASK_STACK_SIZE 128
 #define STACK_TASK_PRIO 1
 TaskHandle_t start_task_handler;
-// low_task任务配置
-void low_task(void *pvParameters);
-#define LOW_TASK_STACK_SIZE 128
-#define LOW_TASK_PRIO 2
-TaskHandle_t low_task_handler;
-// middle_task任务配置
-void middle_task(void *pvParameters);
-#define MIDDLE_TASK_STACK_SIZE 128
-#define MIDDLE_TASK_PRIO 3
-TaskHandle_t middle_task_handler;
-// high_task任务配置
-void high_task(void *pvParameters);
-#define HIGH_TASK_STACK_SIZE 128
-#define HIGH_TASK_PRIO 4
-TaskHandle_t high_task_handler;
+// TASK1任务配置
+void task1(void *pvParameters);
+#define TASK1_STACK_SIZE 128
+#define TASK1_PRIO 2
+TaskHandle_t task1_handler;
+// TASK2任务配置
+void task2(void *pvParameters);
+#define TASK2_STACK_SIZE 128
+#define TASK2_PRIO 2
+TaskHandle_t task2_handler;
+
+/***********************************************************************************************************
+ *                                                队列集相关
+ ***********************************************************************************************************/
+QueueSetHandle_t queueset_handle; // 队列集句柄
+
+/***********************************************************************************************************
+ *                                                 队列相关
+ ***********************************************************************************************************/
+QueueHandle_t queue_handle; // 队列句柄
 
 /***********************************************************************************************************
  *                                                信号量相关
  ***********************************************************************************************************/
-QueueHandle_t mutex_semphore_handle; // 信号量句柄
+QueueHandle_t semphore_handle; // 信号量句柄
 
 /***********************************************************************************************************
  *                                              FreeRTOS初始化
  ***********************************************************************************************************/
 void App_FreeRTOS_Init(void)
 {
-    // 创建计数型信号量
-    mutex_semphore_handle = xSemaphoreCreateMutex();
-    if (mutex_semphore_handle == NULL)
+    // 创建队列集
+    queueset_handle = xQueueCreateSet(2);
+    if (queueset_handle == NULL)
     {
-        printf("信号量创建失败\n");
-        while (1)
-        {
-        }
+        printf("队列集创建失败\n");
     }
     else
     {
-        printf("信号量创建成功\n");
-        // 创建成功后会默认释放信号量
+        printf("队列集创建成功\n");
     }
+    // 创建队列
+    queue_handle = xQueueCreate(1, sizeof(uint8_t));
+    // 创建信号量
+    semphore_handle = xSemaphoreCreateBinary();
+    // 添加队列和信号量到队列集
+    xQueueAddToSet(queue_handle, queueset_handle);
+    xQueueAddToSet(semphore_handle, queueset_handle);
 
     // 创建任务
     xTaskCreate(start_task, "start_task", START_TASK_STACK_SIZE, NULL, STACK_TASK_PRIO, &start_task_handler);
@@ -67,76 +76,65 @@ void App_FreeRTOS_Init(void)
 void start_task(void *pvParameters)
 {
     taskENTER_CRITICAL(); // 进入临界区
-    xTaskCreate(low_task, "low_task", LOW_TASK_STACK_SIZE, NULL, LOW_TASK_PRIO, &low_task_handler);
-    xTaskCreate(middle_task, "middle_task", MIDDLE_TASK_STACK_SIZE, NULL, MIDDLE_TASK_PRIO, &middle_task_handler);
-    xTaskCreate(high_task, "high_task", HIGH_TASK_STACK_SIZE, NULL, HIGH_TASK_PRIO, &high_task_handler);
+    xTaskCreate(task1, "task1", TASK1_STACK_SIZE, NULL, TASK1_PRIO, &task1_handler);
+    xTaskCreate(task2, "task2", TASK2_STACK_SIZE, NULL, TASK2_PRIO, &task2_handler);
     vTaskDelete(start_task_handler);
     taskEXIT_CRITICAL(); // 退出临界区
 }
 
 /**
- * @brief 低优先级任务：获取信号量，占用信号量时间更久
+ * @brief 通过按键状态向队列集中添加队列或信号量
  *
  * @param pvParameters
  */
-void low_task(void *pvParameters)
+void task1(void *pvParameters)
 {
+    uint8_t key_value;
+
     while (1)
     {
-        printf("低优先级任务获取信号量\n");
-        xSemaphoreTake(mutex_semphore_handle, portMAX_DELAY);
-        printf("低优先级任务正在执行\n");
-        HAL_Delay(3000);
-        printf("低优先级任务释放信号量\n");
-        xSemaphoreGive(mutex_semphore_handle);
+        key_value = KEY_SACN();
+        if (key_value == KEY1_PRESS)
+        {
+            // 当按键1按下，将键值添加到队列集的队列中
+            xQueueSend(queue_handle, &key_value, portMAX_DELAY);
+        }
+        else if (key_value == KEY2_PRESS)
+        {
+            // 当按键2按下，将释放二值信号量
+            xSemaphoreGive(semphore_handle);
+        }
         vTaskDelay(10);
     }
 }
 
 /**
- * @brief 中优先级任务：抢占低优先级任务
+ * @brief 获取队列集消息
  *
  * @param pvParameters
  */
-void middle_task(void *pvParameters)
+void task2(void *pvParameters)
 {
+    QueueSetMemberHandle_t member_handle;
+    uint8_t key_value;
+
     while (1)
     {
-        printf("中优先级任务正在执行\n");
-        vTaskDelay(1000);
+        // 从队列集中读取消息
+        member_handle = xQueueSelectFromSet(queueset_handle, portMAX_DELAY);
+
+        // 队列中有内容
+        if (member_handle == queue_handle)
+        {
+            xQueueReceive(queue_handle, &key_value, portMAX_DELAY); // 获取队列中的内容
+            printf("获取到的队列数据：%d\n", key_value);
+        }
+        // 有信号量被释放
+        else if (member_handle == semphore_handle)
+        {
+            xSemaphoreTake(semphore_handle, portMAX_DELAY); // 获取二值信号量
+            printf("获取信号量成功\n");
+        }
+        // 否则member_handle = NULL
     }
 }
-
-/**
- * @brief 高优先级任务：获取信号量，占用信号量时间更短
- *
- * @param pvParameters
- */
-void high_task(void *pvParameters)
-{
-    while (1)
-    {
-        printf("高优先级任务获取信号量\n");
-        xSemaphoreTake(mutex_semphore_handle, portMAX_DELAY);
-        printf("高优先级任务正在执行\n");
-        HAL_Delay(1000);
-        printf("高优先级任务释放信号量\n");
-        xSemaphoreGive(mutex_semphore_handle);
-        vTaskDelay(10);
-    }
-}
-
-/*
-串口打印结果
---------------------------------------
-高优先级任务正在执行     <-正常执行
-高优先级任务释放信号量   <-正常执行
-中优先级任务正在执行     <-正常执行
-低优先级任务获取信号量   <-正常执行
-低优先级任务正在执行     <-正常执行
-高优先级任务获取信号量   <-高优先级任务抢占低优先级任务，由于获取不到信号量，将低优先级任务优先级拉高
-低优先级任务释放信号量   <-中优先级任务无法抢占优先级拉高后的低优先级任务，低优先级任务会执行到释放信号量，优先级恢复到低优先级
-高优先级任务正在执行     <-信号量释放成功，高优先级任务可以正常获取到信号量然后执行
-高优先级任务释放信号量
-中优先级任务正在执行
-*/
