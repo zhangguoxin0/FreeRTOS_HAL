@@ -32,7 +32,7 @@ TaskHandle_t high_task_handler;
 /***********************************************************************************************************
  *                                                信号量相关
  ***********************************************************************************************************/
-QueueHandle_t semphore_handle; // 信号量句柄
+QueueHandle_t mutex_semphore_handle; // 信号量句柄
 
 /***********************************************************************************************************
  *                                              FreeRTOS初始化
@@ -40,8 +40,8 @@ QueueHandle_t semphore_handle; // 信号量句柄
 void App_FreeRTOS_Init(void)
 {
     // 创建计数型信号量
-    semphore_handle = xSemaphoreCreateBinary();
-    if (semphore_handle == NULL)
+    mutex_semphore_handle = xSemaphoreCreateMutex();
+    if (mutex_semphore_handle == NULL)
     {
         printf("信号量创建失败\n");
         while (1)
@@ -51,8 +51,7 @@ void App_FreeRTOS_Init(void)
     else
     {
         printf("信号量创建成功\n");
-        // 释放信号量
-        xSemaphoreGive(semphore_handle);
+        // 创建成功后会默认释放信号量
     }
 
     // 创建任务
@@ -85,11 +84,11 @@ void low_task(void *pvParameters)
     while (1)
     {
         printf("低优先级任务获取信号量\n");
-        xSemaphoreTake(semphore_handle, portMAX_DELAY);
+        xSemaphoreTake(mutex_semphore_handle, portMAX_DELAY);
         printf("低优先级任务正在执行\n");
         HAL_Delay(3000);
         printf("低优先级任务释放信号量\n");
-        xSemaphoreGive(semphore_handle);
+        xSemaphoreGive(mutex_semphore_handle);
         vTaskDelay(10);
     }
 }
@@ -118,30 +117,26 @@ void high_task(void *pvParameters)
     while (1)
     {
         printf("高优先级任务获取信号量\n");
-        xSemaphoreTake(semphore_handle, portMAX_DELAY);
+        xSemaphoreTake(mutex_semphore_handle, portMAX_DELAY);
         printf("高优先级任务正在执行\n");
         HAL_Delay(1000);
         printf("高优先级任务释放信号量\n");
-        xSemaphoreGive(semphore_handle);
+        xSemaphoreGive(mutex_semphore_handle);
         vTaskDelay(10);
     }
 }
 
-/* 
+/*
 串口打印结果
 --------------------------------------
-信号量创建成功
-高优先级任务获取信号量
-高优先级任务正在执行
+高优先级任务正在执行     <-正常执行
+高优先级任务释放信号量   <-正常执行
+中优先级任务正在执行     <-正常执行
+低优先级任务获取信号量   <-正常执行
+低优先级任务正在执行     <-正常执行
+高优先级任务获取信号量   <-高优先级任务抢占低优先级任务，由于获取不到信号量，将低优先级任务优先级拉高
+低优先级任务释放信号量   <-中优先级任务无法抢占优先级拉高后的低优先级任务，低优先级任务会执行到释放信号量，优先级恢复到低优先级
+高优先级任务正在执行     <-信号量释放成功，高优先级任务可以正常获取到信号量然后执行
 高优先级任务释放信号量
 中优先级任务正在执行
-低优先级任务获取信号量
-低优先级任务正在执行
-高优先级任务获取信号量  <-此处高优先级任务获取信号量失败(被阻塞),后续直接中优先级任务开始执行
-中优先级任务正在执行
-中优先级任务正在执行
-中优先级任务正在执行
-低优先级任务释放信号量  <-此处低优先级任务释放信号量
-高优先级任务正在执行    <-高优先级任务抢占低优先级任务
-高优先级任务释放信号量
 */

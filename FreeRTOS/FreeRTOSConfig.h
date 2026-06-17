@@ -19,6 +19,7 @@
 #define configIDLE_SHOULD_YIELD 1
 #define configUSE_QUEUE_SETS 1          // 启用队列
 #define configUSE_COUNTING_SEMAPHORES 1 // 启用计数型信号量
+#define configUSE_MUTEXES 1             // 启用互斥信号量
 
 /***********************************************************************************************************
  *                                              内存申请配置
