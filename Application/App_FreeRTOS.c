@@ -13,21 +13,26 @@ void start_task(void *pvParameters);
 #define START_TASK_STACK_SIZE 128
 #define STACK_TASK_PRIO 1
 TaskHandle_t start_task_handler;
-// TASK1任务配置
-void task1(void *pvParameters);
-#define TASK1_STACK_SIZE 128
-#define TASK1_PRIO 2
-TaskHandle_t task1_handler;
-// TASK2任务配置
-void task2(void *pvParameters);
-#define TASK2_STACK_SIZE 128
-#define TASK2_PRIO 3
-TaskHandle_t task2_handler;
+// low_task任务配置
+void low_task(void *pvParameters);
+#define LOW_TASK_STACK_SIZE 128
+#define LOW_TASK_PRIO 2
+TaskHandle_t low_task_handler;
+// middle_task任务配置
+void middle_task(void *pvParameters);
+#define MIDDLE_TASK_STACK_SIZE 128
+#define MIDDLE_TASK_PRIO 3
+TaskHandle_t middle_task_handler;
+// high_task任务配置
+void high_task(void *pvParameters);
+#define HIGH_TASK_STACK_SIZE 128
+#define HIGH_TASK_PRIO 4
+TaskHandle_t high_task_handler;
 
 /***********************************************************************************************************
  *                                                信号量相关
  ***********************************************************************************************************/
-QueueHandle_t count_semphore_handle; // 信号量句柄
+QueueHandle_t semphore_handle; // 信号量句柄
 
 /***********************************************************************************************************
  *                                              FreeRTOS初始化
@@ -35,17 +40,19 @@ QueueHandle_t count_semphore_handle; // 信号量句柄
 void App_FreeRTOS_Init(void)
 {
     // 创建计数型信号量
-    count_semphore_handle = xSemaphoreCreateCounting(100, 0); // 参数：(最大值, 初始值)
-    if (count_semphore_handle == NULL)
+    semphore_handle = xSemaphoreCreateBinary();
+    if (semphore_handle == NULL)
     {
-        printf("计数型信号量创建失败\n");
+        printf("信号量创建失败\n");
         while (1)
         {
         }
     }
     else
     {
-        printf("计数型信号量创建成功\n");
+        printf("信号量创建成功\n");
+        // 释放信号量
+        xSemaphoreGive(semphore_handle);
     }
 
     // 创建任务
@@ -61,66 +68,80 @@ void App_FreeRTOS_Init(void)
 void start_task(void *pvParameters)
 {
     taskENTER_CRITICAL(); // 进入临界区
-    xTaskCreate(task1, "task1", TASK1_STACK_SIZE, NULL, TASK1_PRIO, &task1_handler);
-    xTaskCreate(task2, "task2", TASK2_STACK_SIZE, NULL, TASK2_PRIO, &task2_handler);
+    xTaskCreate(low_task, "low_task", LOW_TASK_STACK_SIZE, NULL, LOW_TASK_PRIO, &low_task_handler);
+    xTaskCreate(middle_task, "middle_task", MIDDLE_TASK_STACK_SIZE, NULL, MIDDLE_TASK_PRIO, &middle_task_handler);
+    xTaskCreate(high_task, "high_task", HIGH_TASK_STACK_SIZE, NULL, HIGH_TASK_PRIO, &high_task_handler);
     vTaskDelete(start_task_handler);
     taskEXIT_CRITICAL(); // 退出临界区
 }
 
 /**
- * @brief 当按键1按下时释放计数型信号量
+ * @brief 低优先级任务：获取信号量，占用信号量时间更久
  *
  * @param pvParameters
  */
-void task1(void *pvParameters)
+void low_task(void *pvParameters)
 {
-    uint8_t key_value; // 键值
-    BaseType_t res;
-
     while (1)
     {
-        key_value = KEY_SACN();
-        if (key_value == KEY1_PRESS)
-        {
-            if (count_semphore_handle != NULL)
-            {
-                res = xSemaphoreGive(count_semphore_handle);
-                if (res == pdPASS)
-                {
-                    printf("计数型信号量释放成功\n");
-                }
-                else
-                {
-                    printf("计数型信号量释放失败\n");
-                }
-            }
-        }
+        printf("低优先级任务获取信号量\n");
+        xSemaphoreTake(semphore_handle, portMAX_DELAY);
+        printf("低优先级任务正在执行\n");
+        HAL_Delay(3000);
+        printf("低优先级任务释放信号量\n");
+        xSemaphoreGive(semphore_handle);
         vTaskDelay(10);
     }
 }
 
 /**
- * @brief 每1s获取计数型信号量，当获取成功时打印信号量计数值
+ * @brief 中优先级任务：抢占低优先级任务
  *
  * @param pvParameters
  */
-void task2(void *pvParameters)
+void middle_task(void *pvParameters)
 {
-    BaseType_t res;
-
     while (1)
     {
-        // 获取计数型信号量
-        res = xSemaphoreTake(count_semphore_handle, portMAX_DELAY);
-        // 根据获取情况打印对应信息
-        if (res == pdTRUE)
-        {
-            printf("计数型信号量获取成功,信号量计数值为%d\n",uxSemaphoreGetCount(count_semphore_handle));
-        }
-        else
-        {
-            printf("计数型信号量获取失败\n");
-        }
+        printf("中优先级任务正在执行\n");
         vTaskDelay(1000);
     }
 }
+
+/**
+ * @brief 高优先级任务：获取信号量，占用信号量时间更短
+ *
+ * @param pvParameters
+ */
+void high_task(void *pvParameters)
+{
+    while (1)
+    {
+        printf("高优先级任务获取信号量\n");
+        xSemaphoreTake(semphore_handle, portMAX_DELAY);
+        printf("高优先级任务正在执行\n");
+        HAL_Delay(1000);
+        printf("高优先级任务释放信号量\n");
+        xSemaphoreGive(semphore_handle);
+        vTaskDelay(10);
+    }
+}
+
+/* 
+串口打印结果
+--------------------------------------
+信号量创建成功
+高优先级任务获取信号量
+高优先级任务正在执行
+高优先级任务释放信号量
+中优先级任务正在执行
+低优先级任务获取信号量
+低优先级任务正在执行
+高优先级任务获取信号量  <-此处高优先级任务获取信号量失败(被阻塞),后续直接中优先级任务开始执行
+中优先级任务正在执行
+中优先级任务正在执行
+中优先级任务正在执行
+低优先级任务释放信号量  <-此处低优先级任务释放信号量
+高优先级任务正在执行    <-高优先级任务抢占低优先级任务
+高优先级任务释放信号量
+*/
