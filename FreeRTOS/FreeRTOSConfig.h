@@ -27,7 +27,7 @@
  ***********************************************************************************************************/
 #define configUSE_TIMERS 1                                          // 启用软件定时器
 #define configTIMER_TASK_PRIORITY (configMAX_PRIORITIES - 1)        // 软件定时器优先级
-#define configTIMER_QUEUE_LENGTH 5                                 // 软件定时器队列长度
+#define configTIMER_QUEUE_LENGTH 5                                  // 软件定时器队列长度
 #define configTIMER_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 2) // 软件定时器任务栈大小
 
 /***********************************************************************************************************
@@ -64,7 +64,16 @@
 #define INCLUDE_xTaskGetSchedulerState 1 // 打开能够查询FreeRTOS调度状态
 
 /***********************************************************************************************************
- *                                      FreeRTOS与中断服务函数有关配置
+ *                                      FreeRTOS与Tickless低功耗模式配置
+ ***********************************************************************************************************/
+#define configUSE_TICKLESS_IDLE 1                              // 启用低功耗tickless模式
+#define configEXPECTED_IDLE_TIME_BEFORE_SLEEP 2                // 系统进入相应低功耗模式的最短时间
+#include "APP_FreeRTOS.h"
+#define configPRE_SLEEP_PROCESSING(x) PRE_SLEEP_PROCESSING()   // 在系统进入低功耗模式前执行的事物
+#define configPOST_SLEEP_PROCESSING(x) POST_SLEEP_PROCESSING() // 系统退出低功耗模式后执行的事物
+
+/***********************************************************************************************************
+ *                                       FreeRTOS与中断服务函数配置
  ***********************************************************************************************************/
 // 使用宏定义替代系统终端
 #define xPortPendSVHandler PendSV_Handler
