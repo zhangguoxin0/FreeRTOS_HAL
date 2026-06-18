@@ -25,6 +25,13 @@ void task2(void *pvParameters);
 TaskHandle_t task2_handler;
 
 /***********************************************************************************************************
+ *                                              事件标志组相关
+ ***********************************************************************************************************/
+#define EVENTBIT_0 (1 << 0)
+#define EVENTBIT_1 (1 << 1)
+#define EVENTBIT_ALL 0xFFFFFFFF
+
+/***********************************************************************************************************
  *                                              FreeRTOS初始化
  ***********************************************************************************************************/
 void App_FreeRTOS_Init(void)
@@ -60,11 +67,15 @@ void task1(void *pvParameters)
     {
         key_value = KEY_SACN();
         // 按键按下发送任务通知
-        if (key_value != KEY_NOPRESS)
+        if (key_value == KEY1_PRESS)
         {
-            // 将键值覆盖写入到task2的任务通知值上
-            printf("键值：%d 写入 task2 任务通知值成功！\n",key_value);
-            xTaskNotify(task2_handler, key_value, eSetValueWithOverwrite);
+            printf("按键1按下,将任务通知值的bit0位置1\n");
+            xTaskNotify(task2_handler, EVENTBIT_0, eSetBits);
+        }
+        else if (key_value == KEY2_PRESS)
+        {
+            printf("按键2按下,将任务通知值的bit1位置1\n");
+            xTaskNotify(task2_handler, EVENTBIT_1, eSetBits);
         }
         vTaskDelay(10);
     }
@@ -78,29 +89,21 @@ void task1(void *pvParameters)
 void task2(void *pvParameters)
 {
     BaseType_t res;
-    uint32_t key_value;
+    uint32_t event_bit;
+
     while (1)
     {
-        res = xTaskNotifyWait(0, 0, &key_value, portMAX_DELAY);
+        res = xTaskNotifyWait(EVENTBIT_ALL, EVENTBIT_ALL, &event_bit, portMAX_DELAY);
         if (res == pdTRUE)
         {
-            printf("接收任务通知成功，任务通知模拟消息队列获取消息！\n");
-            printf("获取到的键值：%d\n", key_value);
-            if(key_value == KEY1_PRESS)
+            if (event_bit & EVENTBIT_0)
             {
                 LED1_Toggle();
             }
-            else if(key_value == KEY2_PRESS)
+            if (event_bit & EVENTBIT_1)
             {
-                LED2_ON();
-            }
-            else if(key_value == KEY3_PRESS)
-            {
-                LED2_OFF();
+                LED2_Toggle();
             }
         }
-
-        // 通过延时1s,在1s到来前多次按下不同按键验证覆盖写入功能
-        vTaskDelay(1000);
     }
 }
