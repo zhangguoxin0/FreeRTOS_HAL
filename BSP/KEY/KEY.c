@@ -67,5 +67,5 @@ uint8_t KEY_SACN(void)
         return KEY3_PRESS;
     }
     // 没有按键被按下
-    return 0;
+    return KEY_NOPRESS;
 }

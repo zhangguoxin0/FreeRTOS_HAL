@@ -3,6 +3,7 @@
 
 #include "gpio.h"
 
+#define KEY_NOPRESS 0
 #define KEY1_PRESS 1
 #define KEY2_PRESS 2
 #define KEY3_PRESS 3

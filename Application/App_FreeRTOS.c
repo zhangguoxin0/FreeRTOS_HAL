@@ -3,7 +3,7 @@
 #include "task.h"
 #include "usart.h"
 #include "KEY.h"
-#include "event_groups.h"
+#include "LED.h"
 
 /***********************************************************************************************************
  *                                                任务配置
@@ -55,15 +55,16 @@ void start_task(void *pvParameters)
  */
 void task1(void *pvParameters)
 {
-    uint8_t key_value;
+    uint32_t key_value;
     while (1)
     {
         key_value = KEY_SACN();
-        // 按键1按下发送任务通知
-        if(key_value == KEY1_PRESS)
+        // 按键按下发送任务通知
+        if (key_value != KEY_NOPRESS)
         {
-            printf("任务通知模拟计数型信号量释放！\n");
-            xTaskNotifyGive(task2_handler);  // 向task2发送任务通知，task2任务通知值加1
+            // 将键值覆盖写入到task2的任务通知值上
+            printf("键值：%d 写入 task2 任务通知值成功！\n",key_value);
+            xTaskNotify(task2_handler, key_value, eSetValueWithOverwrite);
         }
         vTaskDelay(10);
     }
@@ -76,15 +77,30 @@ void task1(void *pvParameters)
  */
 void task2(void *pvParameters)
 {
-    uint32_t res;
+    BaseType_t res;
+    uint32_t key_value;
     while (1)
     {
-        res = ulTaskNotifyTake(pdFAIL, portMAX_DELAY);
-        if(res != 0)
+        res = xTaskNotifyWait(0, 0, &key_value, portMAX_DELAY);
+        if (res == pdTRUE)
         {
-            printf("接收任务通知成功，任务通知模拟计数型信号量获取！\n");
-            printf("计数型信号量计数值：%d\n",res);
+            printf("接收任务通知成功，任务通知模拟消息队列获取消息！\n");
+            printf("获取到的键值：%d\n", key_value);
+            if(key_value == KEY1_PRESS)
+            {
+                LED1_Toggle();
+            }
+            else if(key_value == KEY2_PRESS)
+            {
+                LED2_ON();
+            }
+            else if(key_value == KEY3_PRESS)
+            {
+                LED2_OFF();
+            }
         }
+
+        // 通过延时1s,在1s到来前多次按下不同按键验证覆盖写入功能
         vTaskDelay(1000);
     }
 }
