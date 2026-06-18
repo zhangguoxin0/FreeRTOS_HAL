@@ -20,6 +20,7 @@
 #define configUSE_QUEUE_SETS 1          // 启用队列
 #define configUSE_COUNTING_SEMAPHORES 1 // 启用计数型信号量
 #define configUSE_MUTEXES 1             // 启用互斥信号量
+#define configUSE_TASK_NOTIFICATIONS 1  // 启用任务通知
 
 /***********************************************************************************************************
  *                                              内存申请配置

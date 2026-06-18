@@ -25,31 +25,10 @@ void task2(void *pvParameters);
 TaskHandle_t task2_handler;
 
 /***********************************************************************************************************
- *                                              事件标志组相关
- ***********************************************************************************************************/
-EventGroupHandle_t eventgroup_handle;
-#define EVENTBIT_0 0x000001
-#define EVENTBIT_1 0x000010
-
-/***********************************************************************************************************
  *                                              FreeRTOS初始化
  ***********************************************************************************************************/
 void App_FreeRTOS_Init(void)
 {
-    // 创建事件标志组
-    eventgroup_handle = xEventGroupCreate();
-    if (eventgroup_handle == NULL)
-    {
-        printf("事件标志组创建失败\n");
-        while (1)
-        {
-        }
-    }
-    else
-    {
-        printf("事件标志组创建成功\n");
-    }
-
     // 创建任务
     xTaskCreate(start_task, "start_task", START_TASK_STACK_SIZE, NULL, STACK_TASK_PRIO, &start_task_handler);
 
@@ -70,40 +49,40 @@ void start_task(void *pvParameters)
 }
 
 /**
- * @brief 读取按键按下值，根据不同键值将事件标志组相应事件位置1，模拟事件发生
+ * @brief 发送任务通知值
  *
  * @param pvParameters
  */
 void task1(void *pvParameters)
 {
     uint8_t key_value;
-
     while (1)
     {
         key_value = KEY_SACN();
-        if (key_value == KEY1_PRESS)
+        // 按键1按下发送任务通知
+        if(key_value == KEY1_PRESS)
         {
-            xEventGroupSetBits(eventgroup_handle, EVENTBIT_0);
-        }
-        else if (key_value == KEY2_PRESS)
-        {
-            xEventGroupSetBits(eventgroup_handle, EVENTBIT_1);
+            printf("任务通知模拟二值信号量释放！\n");
+            xTaskNotifyGive(task2_handler);  // 向task2发送任务通知，task2任务通知值加1
         }
         vTaskDelay(10);
     }
 }
 
 /**
- * @brief 同时等待事件标志组中的多个事件位，当这些事件位都置1的话就执行相应的处理
+ * @brief 接收任务通知值
  *
  * @param pvParameters
  */
 void task2(void *pvParameters)
 {
-    EventBits_t event_bit;
+    uint32_t res;
     while (1)
     {
-        event_bit = xEventGroupWaitBits(eventgroup_handle, EVENTBIT_0 | EVENTBIT_1, pdTRUE, pdTRUE, portMAX_DELAY);
-        printf("等待到的事件标志位为：%.6x\n", event_bit);
+        res = ulTaskNotifyTake(pdFAIL, portMAX_DELAY);
+        if(res != 0)
+        {
+            printf("接收任务通知成功，任务通知模拟二值信号量获取！\n");
+        } 
     }
 }
