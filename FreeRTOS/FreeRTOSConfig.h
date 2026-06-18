@@ -12,7 +12,6 @@
 #define configTICK_RATE_HZ ((TickType_t)1000)        // RTOS系统节拍中断频率，即每秒中断的次数
 #define configMAX_PRIORITIES (5)                     // FreeRTOS支持的最高优先级
 #define configMINIMAL_STACK_SIZE ((unsigned short)128)
-#define configTOTAL_HEAP_SIZE ((size_t)(12 * 1024))
 #define configMAX_TASK_NAME_LEN (16)
 #define configUSE_TRACE_FACILITY 0
 #define configUSE_16_BIT_TICKS 0
@@ -66,11 +65,17 @@
 /***********************************************************************************************************
  *                                      FreeRTOS与Tickless低功耗模式配置
  ***********************************************************************************************************/
-#define configUSE_TICKLESS_IDLE 1                              // 启用低功耗tickless模式
-#define configEXPECTED_IDLE_TIME_BEFORE_SLEEP 2                // 系统进入相应低功耗模式的最短时间
-#include "APP_FreeRTOS.h"
-#define configPRE_SLEEP_PROCESSING(x) PRE_SLEEP_PROCESSING()   // 在系统进入低功耗模式前执行的事物
-#define configPOST_SLEEP_PROCESSING(x) POST_SLEEP_PROCESSING() // 系统退出低功耗模式后执行的事物
+#define configUSE_TICKLESS_IDLE 1               // 启用低功耗tickless模式
+#define configEXPECTED_IDLE_TIME_BEFORE_SLEEP 2 // 系统进入相应低功耗模式的最短时间
+// #include "APP_FreeRTOS.h"
+// #define configPRE_SLEEP_PROCESSING(x) PRE_SLEEP_PROCESSING()   // 在系统进入低功耗模式前执行的事物
+// #define configPOST_SLEEP_PROCESSING(x) POST_SLEEP_PROCESSING() // 系统退出低功耗模式后执行的事物
+
+/***********************************************************************************************************
+ *                                       FreeRTOS与内存申请相关配置
+ ***********************************************************************************************************/
+#define configSUPPORT_DYNAMIC_ALLOCATION 1          // 支持动态内存分配申请
+#define configTOTAL_HEAP_SIZE ((size_t)(16 * 1024)) // 系统所以栈空间大小
 
 /***********************************************************************************************************
  *                                       FreeRTOS与中断服务函数配置
