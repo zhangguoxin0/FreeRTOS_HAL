@@ -62,7 +62,7 @@ void task1(void *pvParameters)
         // 按键1按下发送任务通知
         if(key_value == KEY1_PRESS)
         {
-            printf("任务通知模拟二值信号量释放！\n");
+            printf("任务通知模拟计数型信号量释放！\n");
             xTaskNotifyGive(task2_handler);  // 向task2发送任务通知，task2任务通知值加1
         }
         vTaskDelay(10);
@@ -82,7 +82,9 @@ void task2(void *pvParameters)
         res = ulTaskNotifyTake(pdFAIL, portMAX_DELAY);
         if(res != 0)
         {
-            printf("接收任务通知成功，任务通知模拟二值信号量获取！\n");
-        } 
+            printf("接收任务通知成功，任务通知模拟计数型信号量获取！\n");
+            printf("计数型信号量计数值：%d\n",res);
+        }
+        vTaskDelay(1000);
     }
 }
